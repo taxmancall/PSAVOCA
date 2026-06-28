@@ -93,6 +93,12 @@
   .again:active{transform:translateY(4px);box-shadow:0 2px 0 #1e8b60}
   .home{width:100%;background:#fff;border:3px solid #d9e6f2;border-radius:20px;padding:14px;font-family:'Jua',sans-serif;font-size:18px;color:var(--ink);cursor:pointer;box-shadow:0 5px 0 #cdd9e6}
   .home:active{transform:translateY(3px);box-shadow:0 1px 0 #cdd9e6}
+  .upload{background:linear-gradient(135deg,#ff8fb1,#b06dff)!important}
+  .divider{display:flex;align-items:center;gap:10px;color:#9bb0c2;font-size:13px;font-weight:700;margin:6px 0 14px}
+  .divider::before,.divider::after{content:"";flex:1;height:2px;background:#e3ebf2;border-radius:2px}
+  .loader{position:fixed;inset:0;z-index:80;background:rgba(35,64,85,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;font-family:'Jua',sans-serif;font-size:18px;text-align:center;padding:24px}
+  .spin{width:54px;height:54px;border:6px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot 1s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
   .hidden{display:none!important}
   .conf{position:fixed;top:-20px;font-size:22px;z-index:50;pointer-events:none;animation:fall linear forwards}
   @keyframes fall{to{transform:translateY(110vh) rotate(520deg)}}
@@ -107,7 +113,10 @@
   <div id="start" class="screen">
     <h1 class="logo"><span class="em">🌈</span> 단어 모험 <span class="em">⚡</span></h1>
     <div class="card">
-      <p class="lead">어떤 놀이를 해볼까요?</p>
+      <p class="lead">이번 주 단어로 놀아요! 🎒</p>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="if(this.files[0])readPhoto(this.files[0])">
+      <button class="mode upload" onclick="document.getElementById('photoInput').click()"><span class="ico">📸</span><span>사진으로 단어 만들기<small>단어장을 찍어 올리면 퀴즈가 만들어져요</small></span></button>
+      <div class="divider">또는 놀이 고르기</div>
       <button class="mode m1" onclick="startGame('def')"><span class="ico">🔍</span><span>뜻 보고 단어 찾기<small>영어 설명을 읽거나 듣고 단어를 골라요</small></span></button>
       <button class="mode m2" onclick="startGame('blank')"><span class="ico">✏️</span><span>문장 빈칸 채우기<small>문장을 듣고 빈칸에 들어갈 단어를 골라요</small></span></button>
       <button class="mode m3" onclick="startGame('mean')"><span class="ico">🇰🇷</span><span>단어 보고 뜻 찾기<small>단어를 듣고 우리말 뜻을 골라요</small></span></button>
@@ -149,9 +158,8 @@
         <div id="wrongList"></div>
       </div>
       <button class="again" onclick="startGame(currentMode)">🔄 한 번 더!</button>
-      <button class="home" onclick="goHome()">🏠 처음으로</button>
-    </div>
-  </div>
+  <!-- LOADER -->
+  <div id="loader" class="loader hidden"><div class="spin"></div><div id="loaderMsg">사진에서 단어를 읽고 있어요...</div></div>
 </div>
 
 <script>
@@ -171,6 +179,58 @@ const WORDS = [
   {w:"passport",      ko:"여권",       em:"🛂",  def:"a government book that lets you travel to other countries", sent:"He forgot his ___ for the flight."},
   {w:"lighthouse",    ko:"등대",       em:"🗼",  def:"a tall tower by the sea with a light that guides ships", sent:"The ___ keeps ships safe from the rocks."}
 ];
+
+/* ---------- 📸 사진으로 단어 만들기 (Claude가 사진을 읽어요) ---------- */
+const READ_PROMPT = "You are reading a child's English vocabulary worksheet (usually a table with columns: Word, part of speech, Definition, example Sentence). Extract EVERY vocabulary row. Return ONLY a JSON array and nothing else (no markdown, no ``` fences, no explanation). Each item must be: {\"w\": the English word exactly, \"ko\": a short Korean meaning, \"em\": ONE emoji that best fits the word, \"def\": a simple English definition under 12 words for a 7-year-old (use the sheet's definition but simplify), \"sent\": the example sentence but with the target word replaced by \"___\"}. If the sheet is missing a definition or sentence for a word, create a simple kid-friendly one. Keep every field short.";
+
+function fileToB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
+function showLoader(msg){document.getElementById('loaderMsg').textContent=msg||'잠깐만요...';document.getElementById('loader').classList.remove('hidden');}
+function hideLoader(){document.getElementById('loader').classList.add('hidden');}
+
+async function readPhoto(file){
+  showLoader('사진에서 단어를 읽고 있어요... 📖');
+  try{
+    const b64=await fileToB64(file);
+    let media=file.type||'image/jpeg';
+    if(!/^image\/(jpeg|png|webp|gif)$/.test(media)) media='image/jpeg';
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",max_tokens:1000,
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:media,data:b64}},
+          {type:"text",text:READ_PROMPT}
+        ]}]
+      })
+    });
+    const data=await res.json();
+    let txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    txt=txt.replace(/```json/gi,'').replace(/```/g,'').trim();
+    const start=txt.indexOf('['), end=txt.lastIndexOf(']');
+    if(start>=0&&end>start) txt=txt.slice(start,end+1);
+    const arr=JSON.parse(txt);
+    const clean=arr.filter(x=>x&&x.w&&x.ko).map(x=>{
+      let sent=(x.sent&&String(x.sent).includes('___'))?String(x.sent):(String(x.sent||x.w));
+      return {w:String(x.w).trim(),ko:String(x.ko).trim(),em:(x.em||'⭐').trim()||'⭐',def:String(x.def||'').trim(),sent:sent.trim()};
+    });
+    if(clean.length<2) throw new Error('too few');
+    applyWords(clean);
+    hideLoader();
+    alert('단어 '+clean.length+'개를 불러왔어요! 🎉 이제 놀이를 골라보세요.');
+  }catch(e){
+    hideLoader();
+    alert('앗, 사진을 잘 읽지 못했어요. 😅\n· 글씨가 또렷하게 보이게 밝은 곳에서 다시 찍어주세요.\n· 그래도 안 되면 채팅에 사진을 올려 주시면 제가 만들어 드릴게요.');
+  }
+  document.getElementById('photoInput').value='';
+}
+
+function applyWords(arr){
+  WORDS.splice(0,WORDS.length,...arr);
+  for(const k in WORDS_BY) delete WORDS_BY[k];
+  WORDS.forEach(x=>WORDS_BY[x.w]=x.w);
+  refreshFoot();
+}
+function refreshFoot(){document.getElementById('foot').textContent=WORDS.length+'개 단어 · 별을 모아보아요 ⭐';}
 
 let currentMode='def', queue=[], idx=0, score=0, locked=false, wrongWords=[];
 document.getElementById('foot').textContent = WORDS.length+'개 단어 · 별을 모아보아요 ⭐';
