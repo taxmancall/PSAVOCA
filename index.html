@@ -114,8 +114,8 @@
     <h1 class="logo"><span class="em">🌈</span> 단어 모험 <span class="em">⚡</span></h1>
     <div class="card">
       <p class="lead">이번 주 단어로 놀아요! 🎒</p>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="if(this.files[0])readPhoto(this.files[0])">
-      <button class="mode upload" onclick="document.getElementById('photoInput').click()"><span class="ico">📸</span><span>사진으로 단어 만들기<small>단어장을 찍어 올리면 퀴즈가 만들어져요</small></span></button>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="if(this.files[0])readPhoto(this.files[0])">
+      <button class="mode upload" onclick="document.getElementById('photoInput').click()"><span class="ico">📸</span><span>사진으로 단어 만들기<small>사진을 찍거나 보관함에서 골라 올려요</small></span></button>
       <div class="divider">또는 놀이 고르기</div>
       <button class="mode m1" onclick="startGame('def')"><span class="ico">🔍</span><span>뜻 보고 단어 찾기<small>영어 설명을 읽거나 듣고 단어를 골라요</small></span></button>
       <button class="mode m2" onclick="startGame('blank')"><span class="ico">✏️</span><span>문장 빈칸 채우기<small>문장을 듣고 빈칸에 들어갈 단어를 골라요</small></span></button>
