@@ -224,7 +224,7 @@ async function readPhoto(file){
           {text:READ_PROMPT},
           {inline_data:{mime_type:media,data:b64}}
         ]}],
-        generationConfig:{temperature:0.2,maxOutputTokens:2048}
+        generationConfig:{temperature:0.2,maxOutputTokens:3000,responseMimeType:"application/json"}
       })
     });
     const data=await res.json();
@@ -233,7 +233,15 @@ async function readPhoto(file){
     txt=txt.replace(/```json/gi,'').replace(/```/g,'').trim();
     const start=txt.indexOf('['), end=txt.lastIndexOf(']');
     if(start>=0&&end>start) txt=txt.slice(start,end+1);
-    const arr=JSON.parse(txt);
+    txt=txt.replace(/,\s*([}\]])/g,'$1'); // trailing comma 보정
+    txt=txt.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,''); // 제어문자 제거
+    let arr;
+    try{ arr=JSON.parse(txt); }
+    catch(parseErr){
+      // 한번 더: 홑따옴표를 쌍따옴표로 바꿔 재시도
+      const fixed=txt.replace(/'([^']*)'\s*:/g,'"$1":');
+      arr=JSON.parse(fixed);
+    }
     const clean=arr.filter(x=>x&&x.w&&x.ko).map(x=>{
       let sent=(x.sent&&String(x.sent).includes('___'))?String(x.sent):(String(x.sent||x.w));
       return {w:String(x.w).trim(),ko:String(x.ko).trim(),em:(x.em||'⭐').trim()||'⭐',def:String(x.def||'').trim(),sent:sent.trim()};
