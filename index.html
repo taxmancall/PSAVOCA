@@ -122,6 +122,7 @@
       <button class="mode m3" onclick="startGame('mean')"><span class="ico">🇰🇷</span><span>단어 보고 뜻 찾기<small>단어를 듣고 우리말 뜻을 골라요</small></span></button>
       <button class="mode m4" onclick="startGame('pic')"><span class="ico">🖼️</span><span>그림 보고 단어 찾기<small>그림만 보고 알맞은 단어를 골라요</small></span></button>
       <p class="foot" id="foot"></p>
+      <p onclick="resetGeminiKey()" style="text-align:center;font-size:12px;color:#aaa;cursor:pointer;margin-top:6px;text-decoration:underline">🔑 API 키 변경</p>
     </div>
   </div>
 
@@ -181,9 +182,22 @@ const WORDS = [
 ];
 
 /* ---------- 📸 사진으로 단어 만들기 (Gemini가 사진을 읽어요) ---------- */
-// 👉 아래에 본인의 Gemini API 키를 넣으세요. (무료 발급: https://aistudio.google.com/apikey)
-const GEMINI_API_KEY = "여기에_GEMINI_API_키를_입력하세요";
 const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_KEY_STORAGE = "wordAdventure_geminiApiKey";
+
+function getGeminiKey(){
+  let k = localStorage.getItem(GEMINI_KEY_STORAGE);
+  if(!k){
+    k = (window.prompt('처음 한 번만! Gemini API 키를 입력해주세요.\n(무료 발급: https://aistudio.google.com/apikey)\n\n한 번 입력하면 이 브라우저에 저장되어 다음부터는 안 물어봐요.')||'').trim();
+    if(k) localStorage.setItem(GEMINI_KEY_STORAGE, k);
+  }
+  return k;
+}
+function resetGeminiKey(){
+  const cur = localStorage.getItem(GEMINI_KEY_STORAGE)||'';
+  const k = (window.prompt('Gemini API 키를 새로 입력하세요.', cur)||'').trim();
+  if(k){ localStorage.setItem(GEMINI_KEY_STORAGE, k); alert('키가 저장되었어요. ✅'); }
+}
 
 const READ_PROMPT = "You are reading a child's English vocabulary worksheet (usually a table with columns: Word, part of speech, Definition, example Sentence). Extract EVERY vocabulary row. Return ONLY a JSON array and nothing else (no markdown, no ``` fences, no explanation). Each item must be: {\"w\": the English word exactly, \"ko\": a short Korean meaning, \"em\": ONE emoji that best fits the word, \"def\": a simple English definition under 12 words for a 7-year-old (use the sheet's definition but simplify), \"sent\": the example sentence but with the target word replaced by \"___\"}. If the sheet is missing a definition or sentence for a word, create a simple kid-friendly one. Keep every field short.";
 
@@ -192,8 +206,9 @@ function showLoader(msg){document.getElementById('loaderMsg').textContent=msg||'
 function hideLoader(){document.getElementById('loader').classList.add('hidden');}
 
 async function readPhoto(file){
-  if(!GEMINI_API_KEY || GEMINI_API_KEY.indexOf('여기에')===0){
-    alert('먼저 코드 안에 GEMINI_API_KEY를 넣어주세요.\nhttps://aistudio.google.com/apikey 에서 무료로 발급받을 수 있어요.');
+  const apiKey = getGeminiKey();
+  if(!apiKey){
+    alert('Gemini API 키가 있어야 사진을 읽을 수 있어요.\nhttps://aistudio.google.com/apikey 에서 무료로 발급받을 수 있어요.');
     document.getElementById('photoInput').value='';
     return;
   }
@@ -202,7 +217,7 @@ async function readPhoto(file){
     const b64=await fileToB64(file);
     let media=file.type||'image/jpeg';
     if(!/^image\/(jpeg|png|webp|gif)$/.test(media)) media='image/jpeg';
-    const res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+":generateContent?key="+GEMINI_API_KEY,{
+    const res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+":generateContent?key="+apiKey,{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         contents:[{parts:[
@@ -229,7 +244,13 @@ async function readPhoto(file){
     alert('단어 '+clean.length+'개를 불러왔어요! 🎉 이제 놀이를 골라보세요.');
   }catch(e){
     hideLoader();
-    alert('앗, 사진을 잘 읽지 못했어요. 😅\n· 글씨가 또렷하게 보이게 밝은 곳에서 다시 찍어주세요.\n· 그래도 안 되면 채팅에 사진을 올려 주시면 제가 만들어 드릴게요.');
+    const msg = String(e && e.message || '');
+    if(/API key not valid|API_KEY_INVALID|PERMISSION_DENIED/i.test(msg)){
+      localStorage.removeItem(GEMINI_KEY_STORAGE);
+      alert('API 키가 올바르지 않은 것 같아요. 😅\n다시 사진을 올리면 키를 새로 입력할 수 있어요.');
+    } else {
+      alert('앗, 사진을 잘 읽지 못했어요. 😅\n· 글씨가 또렷하게 보이게 밝은 곳에서 다시 찍어주세요.\n· 그래도 안 되면 채팅에 사진을 올려 주시면 제가 만들어 드릴게요.');
+    }
   }
   document.getElementById('photoInput').value='';
 }
