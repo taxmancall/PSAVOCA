@@ -180,7 +180,11 @@ const WORDS = [
   {w:"lighthouse",    ko:"등대",       em:"🗼",  def:"a tall tower by the sea with a light that guides ships", sent:"The ___ keeps ships safe from the rocks."}
 ];
 
-/* ---------- 📸 사진으로 단어 만들기 (Claude가 사진을 읽어요) ---------- */
+/* ---------- 📸 사진으로 단어 만들기 (Gemini가 사진을 읽어요) ---------- */
+// 👉 아래에 본인의 Gemini API 키를 넣으세요. (무료 발급: https://aistudio.google.com/apikey)
+const GEMINI_API_KEY = "여기에_GEMINI_API_키를_입력하세요";
+const GEMINI_MODEL = "gemini-2.0-flash";
+
 const READ_PROMPT = "You are reading a child's English vocabulary worksheet (usually a table with columns: Word, part of speech, Definition, example Sentence). Extract EVERY vocabulary row. Return ONLY a JSON array and nothing else (no markdown, no ``` fences, no explanation). Each item must be: {\"w\": the English word exactly, \"ko\": a short Korean meaning, \"em\": ONE emoji that best fits the word, \"def\": a simple English definition under 12 words for a 7-year-old (use the sheet's definition but simplify), \"sent\": the example sentence but with the target word replaced by \"___\"}. If the sheet is missing a definition or sentence for a word, create a simple kid-friendly one. Keep every field short.";
 
 function fileToB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
@@ -188,23 +192,29 @@ function showLoader(msg){document.getElementById('loaderMsg').textContent=msg||'
 function hideLoader(){document.getElementById('loader').classList.add('hidden');}
 
 async function readPhoto(file){
+  if(!GEMINI_API_KEY || GEMINI_API_KEY.indexOf('여기에')===0){
+    alert('먼저 코드 안에 GEMINI_API_KEY를 넣어주세요.\nhttps://aistudio.google.com/apikey 에서 무료로 발급받을 수 있어요.');
+    document.getElementById('photoInput').value='';
+    return;
+  }
   showLoader('사진에서 단어를 읽고 있어요... 📖');
   try{
     const b64=await fileToB64(file);
     let media=file.type||'image/jpeg';
     if(!/^image\/(jpeg|png|webp|gif)$/.test(media)) media='image/jpeg';
-    const res=await fetch("https://api.anthropic.com/v1/messages",{
+    const res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+":generateContent?key="+GEMINI_API_KEY,{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-6",max_tokens:1000,
-        messages:[{role:"user",content:[
-          {type:"image",source:{type:"base64",media_type:media,data:b64}},
-          {type:"text",text:READ_PROMPT}
-        ]}]
+        contents:[{parts:[
+          {text:READ_PROMPT},
+          {inline_data:{mime_type:media,data:b64}}
+        ]}],
+        generationConfig:{temperature:0.2,maxOutputTokens:2048}
       })
     });
     const data=await res.json();
-    let txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    if(data.error) throw new Error(data.error.message||'Gemini API error');
+    let txt=((data.candidates||[])[0]||{}).content?.parts?.map(p=>p.text||'').join('\n') || '';
     txt=txt.replace(/```json/gi,'').replace(/```/g,'').trim();
     const start=txt.indexOf('['), end=txt.lastIndexOf(']');
     if(start>=0&&end>start) txt=txt.slice(start,end+1);
