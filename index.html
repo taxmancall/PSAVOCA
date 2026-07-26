@@ -99,6 +99,27 @@
   .loader{position:fixed;inset:0;z-index:80;background:rgba(35,64,85,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;font-family:'Jua',sans-serif;font-size:18px;text-align:center;padding:24px}
   .spin{width:54px;height:54px;border:6px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot 1s linear infinite}
   @keyframes rot{to{transform:rotate(360deg)}}
+  /* ---------- 단어 인식 화면 ---------- */
+  .wtitle{flex:1;text-align:center;font-family:'Jua',sans-serif;font-size:18px;color:#fff;text-shadow:0 3px 0 var(--sky-deep)}
+  .speedrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;font-weight:700;color:#7b96ab;margin-bottom:14px}
+  .chip{background:#fff;border:3px solid #d9e6f2;border-radius:30px;padding:7px 13px;font-family:'Jua',sans-serif;font-size:14px;color:#5b7892;cursor:pointer;box-shadow:0 3px 0 #cdd9e6}
+  .chip:active{transform:translateY(2px);box-shadow:0 1px 0 #cdd9e6}
+  .chip.on{background:#dff1ff;border-color:var(--sky-deep);color:#1f6fae}
+  .wlist{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+  .wcard{background:#fff;border:3px solid #eaf3ff;border-radius:20px;padding:12px 12px 10px;box-shadow:0 5px 0 #dbe7f2}
+  .wcard.playing{border-color:var(--sun);box-shadow:0 5px 0 #e0a02a;background:#fffbe9}
+  .wtop{display:flex;align-items:center;gap:10px}
+  .wtop .wem{font-size:30px;flex:0 0 auto}
+  .wmain{flex:1;min-width:0}
+  .weng{display:block;font-size:20px;font-family:'Baloo 2',sans-serif;font-weight:800;color:var(--ink);word-break:break-word}
+  .wkor{display:block;font-family:'Jua',sans-serif;font-size:14px;color:#7b96ab;margin-top:2px}
+  .wplay{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:14px;background:linear-gradient(135deg,#ffe27a,#ffc23f);font-size:19px;cursor:pointer;box-shadow:0 4px 0 #e0a02a}
+  .wplay:active{transform:translateY(3px);box-shadow:0 1px 0 #e0a02a}
+  .wdel{flex:0 0 auto;width:32px;height:32px;border:none;border-radius:12px;background:#f2f6fa;color:#9bb0c2;font-size:15px;cursor:pointer}
+  .wsent{margin-top:9px;padding-top:9px;border-top:2px dashed #edf3f8;font-size:14px;line-height:1.5;color:#5b7892;font-weight:600}
+  .wsent u{color:var(--coral);text-decoration-style:dotted}
+  .wmini{margin-left:6px;background:#fff;border:2px solid #cfe3ff;border-radius:14px;padding:4px 10px;font-family:'Jua',sans-serif;font-size:12px;color:#2b6fb5;cursor:pointer;white-space:nowrap}
+  .wtiny{display:block;text-align:center;font-size:12px;color:#9bb0c2;margin-top:12px;text-decoration:underline;cursor:pointer}
   .hidden{display:none!important}
   .conf{position:fixed;top:-20px;font-size:22px;z-index:50;pointer-events:none;animation:fall linear forwards}
   @keyframes fall{to{transform:translateY(110vh) rotate(520deg)}}
@@ -116,6 +137,7 @@
       <p class="lead">이번 주 단어로 놀아요! 🎒</p>
       <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="if(this.files[0])readPhoto(this.files[0])">
       <button class="mode upload" onclick="document.getElementById('photoInput').click()"><span class="ico">📸</span><span>사진으로 단어 만들기<small>사진을 찍거나 보관함에서 골라 올려요</small></span></button>
+      <button class="mode m2" onclick="openWords()" style="background:linear-gradient(135deg,#ffb35c,#ff8a3d)"><span class="ico">📖</span><span>단어 확인하고 듣기<small>지금 단어를 보면서 소리로 들어요</small></span></button>
       <div class="divider">또는 놀이 고르기</div>
       <button class="mode m1" onclick="startGame('def')"><span class="ico">🔍</span><span>뜻 보고 단어 찾기<small>영어 설명을 읽거나 듣고 단어를 골라요</small></span></button>
       <button class="mode m2" onclick="startGame('blank')"><span class="ico">✏️</span><span>문장 빈칸 채우기<small>문장을 듣고 빈칸에 들어갈 단어를 골라요</small></span></button>
@@ -159,9 +181,36 @@
         <div id="wrongList"></div>
       </div>
       <button class="again" onclick="startGame(currentMode)">🔄 한 번 더!</button>
-  <!-- LOADER -->
-  <div id="loader" class="loader hidden"><div class="spin"></div><div id="loaderMsg">사진에서 단어를 읽고 있어요...</div></div>
+      <button class="home" onclick="openWords()">📖 단어 다시 듣기</button>
+    </div>
+  </div>
+
+  <!-- WORDS (단어 인식 화면) -->
+  <div id="words" class="screen hidden">
+    <div class="hud">
+      <button class="back" onclick="goHome()">🏠</button>
+      <div class="wtitle" id="wTitle">단어 0개</div>
+      <button class="back" id="allBtn" onclick="toggleAll()">▶️</button>
+    </div>
+    <div class="card">
+      <p class="lead" id="wLead">단어를 눌러 소리를 들어봐요 🔊</p>
+      <div class="speedrow">
+        <span>읽는 속도</span>
+        <button class="chip" onclick="setRate(0.55,this)">🐢 느리게</button>
+        <button class="chip on" onclick="setRate(0.85,this)">🐇 보통</button>
+        <button class="chip" id="koChip" onclick="toggleKo(this)">🇰🇷 뜻도 함께</button>
+      </div>
+      <div class="wlist" id="wordList"></div>
+      <button class="again" onclick="goHome()">🎮 놀이 고르러 가기</button>
+      <button class="home" onclick="document.getElementById('photoInput').click()">📸 다른 사진으로 바꾸기</button>
+      <span class="wtiny" onclick="resetWords()">기본 단어로 되돌리기</span>
+    </div>
+  </div>
+
 </div>
+
+<!-- LOADER -->
+<div id="loader" class="loader hidden"><div class="spin"></div><div id="loaderMsg">사진에서 단어를 읽고 있어요...</div></div>
 
 <script>
 /* =======================================================================
@@ -249,7 +298,8 @@ async function readPhoto(file){
     if(clean.length<2) throw new Error('too few');
     applyWords(clean);
     hideLoader();
-    alert('단어 '+clean.length+'개를 불러왔어요! 🎉 이제 놀이를 골라보세요.');
+    openWords();
+    document.getElementById('wLead').textContent='사진에서 단어 '+clean.length+'개를 찾았어요! 눌러서 들어봐요 🔊';
   }catch(e){
     hideLoader();
     const msg = String(e && e.message || e || '');
@@ -265,8 +315,8 @@ async function readPhoto(file){
 
 function applyWords(arr){
   WORDS.splice(0,WORDS.length,...arr);
-  for(const k in WORDS_BY) delete WORDS_BY[k];
-  WORDS.forEach(x=>WORDS_BY[x.w]=x.w);
+  rebuildIndex();
+  saveWords();
   refreshFoot();
 }
 function refreshFoot(){document.getElementById('foot').textContent=WORDS.length+'개 단어 · 별을 모아보아요 ⭐';}
@@ -275,20 +325,24 @@ let currentMode='def', queue=[], idx=0, score=0, locked=false, wrongWords=[];
 document.getElementById('foot').textContent = WORDS.length+'개 단어 · 별을 모아보아요 ⭐';
 
 /* ---------- 음성 (브라우저 읽어주기) ---------- */
-let enVoice=null;
+let enVoice=null, koVoice=null;
 function loadVoices(){
   const vs=speechSynthesis.getVoices();
   enVoice = vs.find(v=>/en-US/i.test(v.lang)&&/female|samantha|zira|google/i.test(v.name))
          || vs.find(v=>/^en[-_]US/i.test(v.lang))
          || vs.find(v=>/^en/i.test(v.lang)) || null;
+  koVoice = vs.find(v=>/^ko/i.test(v.lang)) || null;
 }
 if('speechSynthesis' in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
-function speak(text,rate){
-  if(!('speechSynthesis' in window)) return;
+/* text=읽을 말, rate=속도, onend=다 읽은 뒤 할 일, lang='ko'면 우리말 */
+function speak(text,rate,onend,lang){
+  if(!('speechSynthesis' in window)){ if(onend) onend(); return; }
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='en-US'; u.rate=rate||0.85; u.pitch=1.05;
-  if(enVoice) u.voice=enVoice;
+  const u=new SpeechSynthesisUtterance(String(text||''));
+  if(lang==='ko'){ u.lang='ko-KR'; u.rate=(rate||0.85)+0.05; if(koVoice) u.voice=koVoice; }
+  else { u.lang='en-US'; u.rate=rate||0.85; if(enVoice) u.voice=enVoice; }
+  u.pitch=1.05;
+  if(onend){ u.onend=onend; u.onerror=onend; }
   speechSynthesis.speak(u);
 }
 function speakWord(){ speak(queue[idx].w, 0.8); }
@@ -300,6 +354,116 @@ function speakQuestion(){
   else if(currentMode==='mean') speak(q.w,0.8);
   else speak(q.w,0.8); // pic: 정답 전엔 버튼 숨김
 }
+
+/* ---------- 📖 단어 인식 화면 + 단어 듣기 ---------- */
+let listRate=0.85, withKo=false, playAllOn=false, playPos=0;
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function openWords(){ stopAll(); renderWordList(); show('words'); }
+
+function renderWordList(){
+  document.getElementById('wTitle').textContent='단어 '+WORDS.length+'개';
+  const box=document.getElementById('wordList');
+  if(!WORDS.length){ box.innerHTML='<p class="lead">아직 단어가 없어요. 사진을 올려 단어를 만들어 보세요 📸</p>'; return; }
+  box.innerHTML=WORDS.map((x,i)=>{
+    const sent=x.sent&&x.sent.includes('___')
+      ? esc(x.sent).replace('___','<u>'+esc(x.w)+'</u>')
+      : esc(x.sent||'');
+    return '<div class="wcard" id="wc'+i+'">'
+      + '<div class="wtop">'
+      +   '<span class="wem">'+esc(x.em||'⭐')+'</span>'
+      +   '<span class="wmain"><b class="weng">'+esc(x.w)+'</b><span class="wkor">'+esc(x.ko)+'</span></span>'
+      +   '<button class="wplay" onclick="playOne('+i+')" aria-label="단어 듣기">🔊</button>'
+      +   '<button class="wdel" onclick="delWord('+i+')" aria-label="단어 빼기">✕</button>'
+      + '</div>'
+      + (sent? '<div class="wsent">'+sent+'<button class="wmini" onclick="playSent('+i+')">🗣️ 문장</button></div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function setRate(r,btn){
+  listRate=r;
+  [...document.querySelectorAll('.speedrow .chip')].forEach(c=>{ if(c.id!=='koChip') c.classList.remove('on'); });
+  btn.classList.add('on');
+}
+function toggleKo(btn){ withKo=!withKo; btn.classList.toggle('on',withKo); }
+
+function highlight(i){
+  document.querySelectorAll('.wcard').forEach(c=>c.classList.remove('playing'));
+  if(i>=0){
+    const el=document.getElementById('wc'+i);
+    if(el){ el.classList.add('playing'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  }
+}
+
+function stopAll(){
+  playAllOn=false;
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  const b=document.getElementById('allBtn'); if(b) b.textContent='▶️';
+  highlight(-1);
+}
+
+function playOne(i){
+  stopAll(); highlight(i);
+  const x=WORDS[i]; if(!x) return;
+  speak(x.w, listRate, ()=>{
+    if(withKo) setTimeout(()=>speak(x.ko, listRate, ()=>highlight(-1), 'ko'), 250);
+    else highlight(-1);
+  });
+}
+function playSent(i){
+  stopAll(); highlight(i);
+  const x=WORDS[i]; if(!x) return;
+  const s=(x.sent&&x.sent.includes('___'))? x.sent.replace('___',x.w) : (x.sent||x.w);
+  speak(s, listRate, ()=>highlight(-1));
+}
+
+function toggleAll(){ playAllOn ? stopAll() : startAll(); }
+function startAll(){
+  if(!WORDS.length) return;
+  playAllOn=true; playPos=0;
+  document.getElementById('allBtn').textContent='⏹️';
+  stepAll();
+}
+function stepAll(){
+  if(!playAllOn) return;
+  if(playPos>=WORDS.length){ stopAll(); return; }
+  const i=playPos, x=WORDS[i];
+  highlight(i);
+  speak(x.w, listRate, ()=>{
+    if(!playAllOn) return;
+    const go=()=>{ if(!playAllOn) return; playPos=i+1; setTimeout(stepAll,450); };
+    if(withKo) setTimeout(()=>speak(x.ko, listRate, go, 'ko'), 250); else go();
+  });
+}
+
+function delWord(i){
+  stopAll();
+  if(!confirm('"'+WORDS[i].w+'" 단어를 뺄까요?')) return;
+  WORDS.splice(i,1);
+  saveWords(); refreshFoot(); renderWordList();
+}
+
+/* 단어 저장/불러오기 (이 브라우저에만 저장돼요) */
+const WORDS_STORAGE='wordAdventure_words';
+const DEFAULT_WORDS=JSON.parse(JSON.stringify(WORDS));
+function saveWords(){ try{ localStorage.setItem(WORDS_STORAGE, JSON.stringify(WORDS)); }catch(e){} }
+function loadSavedWords(){
+  try{
+    const raw=localStorage.getItem(WORDS_STORAGE);
+    if(!raw) return;
+    const arr=JSON.parse(raw);
+    if(Array.isArray(arr)&&arr.length>=2){ WORDS.splice(0,WORDS.length,...arr); rebuildIndex(); }
+  }catch(e){}
+}
+function resetWords(){
+  stopAll();
+  if(!confirm('기본 단어 10개로 되돌릴까요?')) return;
+  WORDS.splice(0,WORDS.length,...JSON.parse(JSON.stringify(DEFAULT_WORDS)));
+  rebuildIndex(); saveWords(); refreshFoot(); renderWordList();
+}
+function rebuildIndex(){ for(const k in WORDS_BY) delete WORDS_BY[k]; WORDS.forEach(x=>WORDS_BY[x.w]=x.w); }
 
 /* ---------- 효과음 ---------- */
 let actx;
@@ -316,8 +480,8 @@ function beep(type){
 }
 
 /* ---------- 화면 ---------- */
-function show(id){['start','quiz','result'].forEach(s=>document.getElementById(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0);}
-function goHome(){ if('speechSynthesis' in window) speechSynthesis.cancel(); show('start'); }
+function show(id){['start','quiz','result','words'].forEach(s=>document.getElementById(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0);}
+function goHome(){ stopAll(); show('start'); }
 
 function startGame(mode){
   currentMode=mode; queue=shuffle([...WORDS]); idx=0; score=0; wrongWords=[];
@@ -426,6 +590,8 @@ function showResult(){
   if(pct>=.7){ for(let i=0;i<3;i++) setTimeout(confetti,i*250); }
 }
 const WORDS_BY={}; WORDS.forEach(x=>WORDS_BY[x.w]=x.w);
+/* 저장해 둔 단어가 있으면 불러오기 */
+loadSavedWords(); refreshFoot();
 
 /* ---------- 색종이 / 구름 ---------- */
 function confetti(){
