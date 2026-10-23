@@ -384,6 +384,7 @@ function renderWordList(){
       +   '<button class="wplay" onclick="playOne('+i+')" aria-label="단어 듣기">🔊</button>'
       +   '<button class="wdel" onclick="delWord('+i+')" aria-label="단어 빼기">✕</button>'
       + '</div>'
+      + (x.def? '<div class="wdef" style="font-size:14px;color:#4a5a6a;line-height:1.5;margin:6px 0 4px;padding:0 4px">📖 '+esc(x.def)+'</div>' : '')
       + (sent? '<div class="wsent">'+sent+'<button class="wmini" onclick="playSent('+i+')">🗣️ 문장</button>'
               + (x.def? '<button class="wmini" onclick="playDef('+i+')">📖 정의</button>' : '')
               + (x.sk? '<span class="wsk">🇰🇷 '+esc(x.sk)+'</span>' : '') + '</div>' : '')
