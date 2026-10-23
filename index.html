@@ -381,11 +381,11 @@ function renderWordList(){
       + '<div class="wtop">'
       +   '<span class="wem">'+esc(x.em||'⭐')+'</span>'
       +   '<span class="wmain"><b class="weng">'+esc(x.w)+'</b><span class="wkor">'+esc(x.ko)+'</span></span>'
-      +   (x.def? '<button class="wmini" onclick="playDef('+i+')" aria-label="정의 듣기">📖 정의</button>' : '')
       +   '<button class="wplay" onclick="playOne('+i+')" aria-label="단어 듣기">🔊</button>'
       +   '<button class="wdel" onclick="delWord('+i+')" aria-label="단어 빼기">✕</button>'
       + '</div>'
       + (sent? '<div class="wsent">'+sent+'<button class="wmini" onclick="playSent('+i+')">🗣️ 문장</button>'
+              + (x.def? '<button class="wmini" onclick="playDef('+i+')">📖 정의</button>' : '')
               + (x.sk? '<span class="wsk">🇰🇷 '+esc(x.sk)+'</span>' : '') + '</div>' : '')
       + '</div>';
   }).join('');
