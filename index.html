@@ -115,6 +115,7 @@
   .wkor{display:block;font-family:'Jua',sans-serif;font-size:14px;color:#7b96ab;margin-top:2px}
   .wplay{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:14px;background:linear-gradient(135deg,#ffe27a,#ffc23f);font-size:19px;cursor:pointer;box-shadow:0 4px 0 #e0a02a}
   .wplay:active{transform:translateY(3px);box-shadow:0 1px 0 #e0a02a}
+  .wcheck{flex:0 0 auto;width:34px;height:34px;padding:0;border:none;background:transparent;font-size:22px;line-height:1;cursor:pointer}
   .wdel{flex:0 0 auto;width:32px;height:32px;border:none;border-radius:12px;background:#f2f6fa;color:#9bb0c2;font-size:15px;cursor:pointer}
   .wsent{margin-top:9px;padding-top:9px;border-top:2px dashed #edf3f8;font-size:14px;line-height:1.5;color:#5b7892;font-weight:600}
   .wsent u{color:var(--coral);text-decoration-style:dotted}
@@ -370,7 +371,7 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 function openWords(){ stopAll(); renderWordList(); show('words'); }
 
 function renderWordList(){
-  document.getElementById('wTitle').textContent='단어 '+WORDS.length+'개';
+  updateCheckCount();
   const box=document.getElementById('wordList');
   if(!WORDS.length){ box.innerHTML='<p class="lead">아직 단어가 없어요. 사진을 올려 단어를 만들어 보세요 📸</p>'; return; }
   box.innerHTML=WORDS.map((x,i)=>{
@@ -379,6 +380,7 @@ function renderWordList(){
       : esc(x.sent||'');
     return '<div class="wcard" id="wc'+i+'">'
       + '<div class="wtop">'
+      +   '<button class="wcheck" id="ck'+i+'" onclick="toggleCheck('+i+')" aria-label="맞음 틀림 표시">'+(CK_MARK[wordChecks[x.w]||'']||'⬜')+'</button>'
       +   '<span class="wem">'+esc(x.em||'⭐')+'</span>'
       +   '<span class="wmain"><b class="weng">'+esc(x.w)+'</b><span class="wkor">'+esc(x.ko)+'</span></span>'
       +   '<button class="wplay" onclick="playOne('+i+')" aria-label="단어 듣기">🔊</button>'
@@ -421,6 +423,23 @@ function playOne(i){
     else highlight(-1);
   });
 }
+/* ---------- ⭕❌ 맞는 것 / 틀린 것 체크 (이 기기 브라우저에 저장) ---------- */
+const CK_MARK={'':'⬜','o':'⭕','x':'❌'};
+let wordChecks={};
+try{ wordChecks=JSON.parse(localStorage.getItem('psavoca_checks')||'{}')||{}; }catch(e){ wordChecks={}; }
+function updateCheckCount(){
+  const v=Object.values(wordChecks);
+  document.getElementById('wTitle').textContent='단어 '+WORDS.length+'개 · ⭕'+v.filter(x=>x==='o').length+' ❌'+v.filter(x=>x==='x').length;
+}
+function toggleCheck(i){
+  const w=WORDS[i].w; const cur=wordChecks[w]||'';
+  const nxt=cur===''?'o':cur==='o'?'x':'';
+  if(nxt) wordChecks[w]=nxt; else delete wordChecks[w];
+  try{ localStorage.setItem('psavoca_checks', JSON.stringify(wordChecks)); }catch(e){}
+  const b=document.getElementById('ck'+i); if(b) b.textContent=CK_MARK[nxt];
+  updateCheckCount();
+}
+
 function playDef(i){
   stopAll(); highlight(i);
   const x=WORDS[i]; if(!x||!x.def) return;
