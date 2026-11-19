@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스피치 암기 도우미</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1c2233;--mute:#6b7388;--line:#e2e5ee;--pri:#2f5bd8;--priSoft:#e6edff;--ok:#1f9d63;--okSoft:#dcf5e8;--bad:#d64545;--badSoft:#fde4e4}
+@media(prefers-color-scheme:dark){:root{--bg:#12151d;--card:#1b2030;--ink:#eef1f8;--mute:#98a1b8;--line:#2a3147;--pri:#7c9bff;--priSoft:#25304f;--ok:#4fd392;--okSoft:#183a2b;--bad:#ff7b7b;--badSoft:#46222a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.55}
+.wrap{max-width:720px;margin:0 auto;padding:14px 14px 80px}
+h1{font-size:19px;margin:6px 0 2px}
+.sub{color:var(--mute);font-size:13px;margin-bottom:12px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.bar>i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 13px;font-size:14px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.chip.done::after{content:" ✓";color:var(--ok);font-weight:700}
+.chip.on.done::after{color:#fff}
+.modes .chip{flex:1;text-align:center;padding:10px 6px;border-radius:12px;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:19px;line-height:2}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:14px;color:var(--mute)}
+.btn{border:0;background:var(--pri);color:#fff;border-radius:10px;padding:9px 14px;font-size:14px;cursor:pointer;font-family:inherit}
+.btn.ghost{background:var(--priSoft);color:var(--pri)}
+.sent{cursor:pointer;border-radius:6px;padding:1px 2px}
+.sent.now{background:var(--priSoft)}
+.blank{font:inherit;border:0;border-bottom:2px solid var(--pri);background:var(--priSoft);color:transparent;border-radius:4px;padding:0 2px;margin:0 1px;cursor:pointer;min-width:1.5em;vertical-align:baseline}
+.blank.show{color:var(--ok);background:var(--okSoft);border-bottom-color:var(--ok)}
+.fl{font:inherit;border:0;background:none;color:var(--pri);cursor:pointer;padding:0;margin:0}
+.fl.show{color:var(--ok)}
+.rc{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;background:var(--card);font-size:17px;line-height:1.6}
+.rc .hint{color:var(--mute)}
+.rc .ans{color:var(--ok);margin-top:4px}
+.rc button{margin-top:8px}
+.pick{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:16px;line-height:1.5;cursor:pointer;font-family:inherit}
+.pick.bad{background:var(--badSoft);border-color:var(--bad)}
+.pick.good{background:var(--okSoft);border-color:var(--ok)}
+.pick[disabled]{opacity:.6}
+.msg{margin:10px 0;font-weight:600}
+.big{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:15px}
+.big input{width:20px;height:20px}
+.note{color:var(--mute);font-size:12.5px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎤 Florence Nightingale 스피치</h1>
+  <div class="sub">문단별로 단계를 올려가며 외워요</div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="row" id="paras"></div>
+  <div class="row modes" id="modes"></div>
+  <div id="view"></div>
+</div>
+<script>
+var TEXT=[
+"Good morning, everyone! Can numbers and pictures help save lives? I think they can! My name is Noah, and I am from Lion Class at PSA Mokdong. My influential person is Florence Nightingale, and I admire the way she used her brain to solve a very serious problem.",
+"Florence was born in Italy in 1820 and grew up in England. She liked learning, especially mathematics. As a young woman, she wanted to become a nurse. Some people thought she should stay at home, but Florence followed her goal. She learned nursing skills and began helping patients.",
+"In 1854, Florence traveled to care for soldiers during the Crimean War. She saw that many soldiers were dying, not only from wounds, but also from disease. The hospitals needed to be much cleaner. Florence helped improve the conditions, but she wanted leaders to understand the problem, too.",
+"So what did she do? She counted, recorded, and studied information. Then she made colorful charts to show how many soldiers were dying from different causes. Her pictures made difficult numbers easier to understand. One of her greatest accomplishments was using this evidence to help change hospital care and protect more lives. She also helped build better nursing education.",
+"I think Florence was like a detective. She did not just guess what was wrong. She looked for facts and used them to find an answer. That lesson matters to me at school. When a math problem is hard, I can check my work. When an experiment goes wrong, I can find out why. Florence inspires me to stay curious, ask good questions, and use what I learn to help other people.",
+"Thank you for coming to listen to my speech. I hope you have a great day!"
+];
+var S=TEXT.map(function(p){return p.match(/[^.!?]+[.!?]+/g).map(function(s){return s.trim()})});
+var MODES=[["listen","① 듣기"],["cloze","② 빈칸"],["first","③ 첫글자"],["recall","④ 말하기"],["order","⑤ 순서"]];
+var st={p:0,mode:"listen",level:0.3,seed:1,rate:0.85,playing:false};
+var done={};
+try{done=JSON.parse(localStorage.getItem("noah-done")||"{}")}catch(e){}
+function save(){try{localStorage.setItem("noah-done",JSON.stringify(done))}catch(e){}}
+function $(id){return document.getElementById(id)}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(arr,seed){var r=rng(seed),a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function sents(){return st.p===-1?[].concat.apply([],S):S[st.p]}
+function splitWord(w){var m=w.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/);return[m[1],m[2],m[3]]}
+
+function stopSpeech(){st.playing=false;try{speechSynthesis.cancel()}catch(e){}}
+function speak(text,cb){try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=st.rate;u.onend=function(){cb&&cb()};u.onerror=function(){cb&&cb()};speechSynthesis.speak(u)}catch(e){cb&&cb()}}
+
+function header(){
+  var h='';
+  S.forEach(function(_,i){h+='<button class="chip'+(st.p===i?' on':'')+(done[i]?' done':'')+'" data-p="'+i+'">문단 '+(i+1)+'</button>'});
+  h+='<button class="chip'+(st.p===-1?' on':'')+'" data-p="-1">전체</button>';
+  $("paras").innerHTML=h;
+  $("modes").innerHTML=MODES.map(function(m){return'<button class="chip'+(st.mode===m[0]?' on':'')+'" data-m="'+m[0]+'">'+m[1]+'</button>'}).join("");
+  var n=Object.keys(done).filter(function(k){return done[k]}).length;
+  $("prog").style.width=(n/S.length*100)+"%";
+}
+function footer(){
+  if(st.p===-1)return'';
+  return'<label class="big"><input type="checkbox" id="dn"'+(done[st.p]?' checked':'')+'> 이 문단 다 외웠어요</label>';
+}
+
+function viewListen(){
+  var i=0,h='<div class="tools"><button class="btn" id="playall">▶ 처음부터 듣기</button><button class="btn ghost" id="stop">■ 멈춤</button><span>속도</span>'
+  +'<button class="chip'+(st.rate===0.7?' on':'')+'" data-r="0.7">느리게</button><button class="chip'+(st.rate===0.85?' on':'')+'" data-r="0.85">보통</button><button class="chip'+(st.rate===1?' on':'')+'" data-r="1">빠르게</button></div><div class="card">';
+  sents().forEach(function(s,k){h+='<span class="sent" data-k="'+k+'">'+esc(s)+'</span> '});
+  h+='</div><div class="note">문장을 누르면 그 문장만 들려줘요. 3번 듣고 → 따라 읽기부터 시작해요.</div>';
+  return h;
+}
+function viewCloze(){
+  var words=[];sents().forEach(function(s){s.split(/\s+/).forEach(function(w){words.push(w)})});
+  var idx=[];words.forEach(function(w,i){if(splitWord(w)[1])idx.push(i)});
+  var hide={};shuffle(idx,st.seed+st.p*7).slice(0,Math.round(idx.length*st.level)).forEach(function(i){hide[i]=1});
+  var h='<div class="tools"><span>가릴 비율</span>';
+  [0.3,0.5,0.7,1].forEach(function(l){h+='<button class="chip'+(st.level===l?' on':'')+'" data-l="'+l+'">'+Math.round(l*100)+'%</button>'});
+  h+='<button class="btn ghost" id="reshuffle">🔀 다시 섞기</button><button class="btn ghost" id="hideall">전부 가리기</button></div><div class="card">';
+  words.forEach(function(w,i){var p=splitWord(w);
+    if(hide[i])h+=esc(p[0])+'<button class="blank" data-w="'+esc(p[1])+'" style="width:'+Math.max(2,p[1].length*0.62)+'em">'+esc(p[1])+'</button>'+esc(p[2])+' ';
+    else h+=esc(w)+' ';});
+  return h+'</div><div class="note">빈칸을 말해보고 → 눌러서 확인. 100%까지 막힘없이 되면 다음 단계!</div>';
+}
+function viewFirst(){
+  var h='<div class="tools"><button class="btn ghost" id="showall">전부 보기</button><button class="btn ghost" id="hideall2">전부 가리기</button></div><div class="card">';
+  sents().forEach(function(s){s.split(/\s+/).forEach(function(w){var p=splitWord(w);
+    if(!p[1]){h+=esc(w)+' ';return}
+    h+=esc(p[0])+'<button class="fl" data-w="'+esc(p[1])+'" data-f="'+esc(p[1].charAt(0)+(p[1].length>1?'_'.repeat(Math.min(p[1].length-1,6)):''))+'">'+esc(p[1].charAt(0)+(p[1].length>1?'_'.repeat(Math.min(p[1].length-1,6)):''))+'</button>'+esc(p[2])+' ';});});
+  return h+'</div><div class="note">첫 글자만 보고 문장을 말해요. 막히는 단어는 눌러서 확인.</div>';
+}
+function viewRecall(){
+  var h='<div class="tools"><span>문장을 보지 않고 말해본 뒤 확인해요</span></div>';
+  sents().forEach(function(s,k){var w=s.split(/\s+/);
+    h+='<div class="rc"><div class="hint">'+(k+1)+'. '+esc(w.slice(0,2).join(' '))+' …</div><div class="ans" style="display:none">'+esc(s)+'</div><button class="btn ghost" data-rc="1">정답 보기</button></div>';});
+  return h;
+}
+var ord=null;
+function viewOrder(){
+  var list=sents();
+  if(!ord||ord.key!==st.p+"|"+st.seed){
+    var idx=list.map(function(_,i){return i});
+    ord={key:st.p+"|"+st.seed,order:shuffle(idx,st.seed*31+st.p+5),next:0,bad:-1};
+  }
+  var h='<div class="tools"><button class="btn ghost" id="reorder">🔀 다시</button><span>원고 순서대로 눌러요 ('+ord.next+'/'+list.length+')</span></div>';
+  ord.order.forEach(function(i){
+    var used=i<ord.next;
+    h+='<button class="pick'+(used?' good':'')+(ord.bad===i?' bad':'')+'" data-o="'+i+'"'+(used?' disabled':'')+'>'+(used?(i+1)+'. ':'')+esc(list[i])+'</button>';});
+  if(ord.next===list.length)h+='<div class="msg" style="color:var(--ok)">🎉 순서 완벽!</div>';
+  return h;
+}
+
+function render(){
+  header();
+  var v=$("view"),h='';
+  if(st.mode==="listen")h=viewListen();
+  else if(st.mode==="cloze")h=viewCloze();
+  else if(st.mode==="first")h=viewFirst();
+  else if(st.mode==="recall")h=viewRecall();
+  else h=viewOrder();
+  v.innerHTML=h+footer();
+}
+
+document.addEventListener("click",function(e){
+  var t=e.target.closest("button,span.sent");if(!t)return;
+  var d=t.dataset;
+  if(d.p!==undefined){stopSpeech();st.p=+d.p;ord=null;render();return}
+  if(d.m){stopSpeech();st.mode=d.m;render();return}
+  if(d.r){st.rate=+d.r;render();return}
+  if(d.l){st.level=+d.l;render();return}
+  if(t.id==="reshuffle"||t.id==="reorder"){st.seed++;ord=null;render();return}
+  if(t.id==="hideall"){document.querySelectorAll(".blank").forEach(function(b){b.classList.remove("show")});return}
+  if(t.id==="showall"){document.querySelectorAll(".fl").forEach(function(b){b.textContent=b.dataset.w;b.classList.add("show")});return}
+  if(t.id==="hideall2"){document.querySelectorAll(".fl").forEach(function(b){b.textContent=b.dataset.f;b.classList.remove("show")});return}
+  if(t.classList.contains("blank")){t.classList.toggle("show");return}
+  if(t.classList.contains("fl")){var on=t.classList.toggle("show");t.textContent=on?d.w:d.f;return}
+  if(d.rc){var a=t.parentNode.querySelector(".ans");var vis=a.style.display!=="none";a.style.display=vis?"none":"block";t.textContent=vis?"정답 보기":"가리기";return}
+  if(d.o!==undefined){var i=+d.o;if(i===ord.next){ord.next++;ord.bad=-1}else{ord.bad=i}render();return}
+  if(t.classList&&t.classList.contains("sent")){stopSpeech();speak(sents()[+d.k]);return}
+  if(t.id==="stop"){stopSpeech();document.querySelectorAll(".sent").forEach(function(s){s.classList.remove("now")});return}
+  if(t.id==="playall"){
+    stopSpeech();st.playing=true;var L=sents(),k=0;
+    (function next(){
+      document.querySelectorAll(".sent").forEach(function(s){s.classList.remove("now")});
+      if(!st.playing||k>=L.length){st.playing=false;return}
+      var el=document.querySelector('.sent[data-k="'+k+'"]');if(el)el.classList.add("now");
+      speak(L[k++],next);
+    })();return;
+  }
+});
+document.addEventListener("change",function(e){
+  if(e.target.id==="dn"){done[st.p]=e.target.checked;save();header()}
+});
+render();
+</script>
+</body>
+</html>
