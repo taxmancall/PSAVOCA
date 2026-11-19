@@ -108,15 +108,16 @@
   .wlist{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
   .wcard{background:#fff;border:3px solid #eaf3ff;border-radius:20px;padding:12px 12px 10px;box-shadow:0 5px 0 #dbe7f2}
   .wcard.playing{border-color:var(--sun);box-shadow:0 5px 0 #e0a02a;background:#fffbe9}
-  .wtop{display:flex;align-items:center;gap:10px}
-  .wtop .wem{font-size:26px;flex:0 0 auto}
+  .wtop{display:flex;align-items:center;gap:6px}
+  .wtop .wem{font-size:24px;flex:0 0 auto}
+  .wnum{flex:0 0 auto;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:#dff1ff;color:#1f6fae;font-family:'Jua',sans-serif;font-size:12px;line-height:22px;text-align:center;box-sizing:border-box}
   .wmain{flex:1;min-width:0}
-  .weng{display:block;font-size:clamp(15px,5vw,20px);font-family:'Baloo 2',sans-serif;font-weight:800;color:var(--ink);white-space:normal;overflow-wrap:normal;word-break:normal}
+  .weng{display:block;font-size:clamp(13px,4.4vw,19px);font-family:'Baloo 2',sans-serif;font-weight:800;color:var(--ink);white-space:normal;overflow-wrap:normal;word-break:normal}
   .wkor{display:block;font-family:'Jua',sans-serif;font-size:14px;color:#7b96ab;margin-top:2px}
-  .wplay{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:14px;background:linear-gradient(135deg,#ffe27a,#ffc23f);font-size:19px;cursor:pointer;box-shadow:0 4px 0 #e0a02a}
+  .wplay{flex:0 0 auto;width:40px;height:40px;border:none;border-radius:14px;background:linear-gradient(135deg,#ffe27a,#ffc23f);font-size:19px;cursor:pointer;box-shadow:0 4px 0 #e0a02a}
   .wplay:active{transform:translateY(3px);box-shadow:0 1px 0 #e0a02a}
-  .wcheck{flex:0 0 auto;width:28px;height:34px;padding:0;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer}
-  .wdel{flex:0 0 auto;width:32px;height:32px;border:none;border-radius:12px;background:#f2f6fa;color:#9bb0c2;font-size:15px;cursor:pointer}
+  .wcheck{flex:0 0 auto;width:24px;height:34px;padding:0;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer}
+  .wdel{flex:0 0 auto;width:28px;height:28px;border:none;border-radius:12px;background:#f2f6fa;color:#9bb0c2;font-size:15px;cursor:pointer}
   .wsent{margin-top:9px;padding-top:9px;border-top:2px dashed #edf3f8;font-size:14px;line-height:1.5;color:#5b7892;font-weight:600}
   .wsent u{color:var(--coral);text-decoration-style:dotted}
   .wsk{display:block;margin-top:6px;font-family:'Jua',sans-serif;font-size:14px;color:#2b6fb5;background:#eef6ff;border-radius:12px;padding:6px 10px}
@@ -380,6 +381,7 @@ function renderWordList(){
       : esc(x.sent||'');
     return '<div class="wcard" id="wc'+i+'">'
       + '<div class="wtop">'
+      +   '<span class="wnum">'+(i+1)+'</span>'
       +   '<button class="wcheck" id="ck'+i+'" onclick="toggleCheck('+i+')" aria-label="맞음 틀림 표시">'+(CK_MARK[wordChecks[x.w]||'']||'⬜')+'</button>'
       +   '<span class="wem">'+esc(x.em||'⭐')+'</span>'
       +   '<span class="wmain"><b class="weng">'+esc(x.w)+'</b><span class="wkor">'+esc(x.ko)+'</span></span>'
@@ -637,7 +639,7 @@ function showResult(){
   if(wrongWords.length){
     wb.classList.remove('hidden');
     wl.innerHTML=wrongWords.map((x,i)=>
-      '<div class="wrow" onclick="speak(WORDS_BY[\''+x.w.replace(/'/g,"\\'")+'\'],0.8)"><span class="wem">'+x.em+'</span>'+x.w+'<span class="wko">'+x.ko+'</span><span class="wsp">🔊</span></div>'
+      '<div class="wrow" onclick="speak(WORDS_BY[\''+x.w.replace(/'/g,"\\'")+'\'],0.8)"><span class="wnum">'+(WORDS.findIndex(y=>y.w===x.w)+1)+'</span><span class="wem">'+x.em+'</span>'+x.w+'<span class="wko">'+x.ko+'</span><span class="wsp">🔊</span></div>'
     ).join('');
   }else wb.classList.add('hidden');
   if(pct>=.7){ for(let i=0;i<3;i++) setTimeout(confetti,i*250); }
