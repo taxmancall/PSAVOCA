@@ -151,6 +151,7 @@
       <button class="mode m2" onclick="startGame('blank')"><span class="ico">✏️</span><span>문장 빈칸 채우기<small>문장을 듣고 빈칸에 들어갈 단어를 골라요</small></span></button>
       <button class="mode m3" onclick="startGame('mean')"><span class="ico">🇰🇷</span><span>단어 보고 뜻 찾기<small>단어를 듣고 우리말 뜻을 골라요</small></span></button>
       <button class="mode m4" onclick="startGame('pic')"><span class="ico">🖼️</span><span>그림 보고 단어 찾기<small>그림만 보고 알맞은 단어를 골라요</small></span></button>
+      <button class="mode m5" onclick="startGame('spell')" style="background:linear-gradient(135deg,#7bd88f,#2fb36a)"><span class="ico">🔤</span><span>스펠링 맞히기<small>"How do you spell ...?" 를 듣고 철자를 써요</small></span></button>
       <p class="foot" id="foot"></p>
       <p onclick="resetGeminiKey()" style="text-align:center;font-size:12px;color:#aaa;cursor:pointer;margin-top:6px;text-decoration:underline">🔑 API 키 변경</p>
     </div>
@@ -360,6 +361,7 @@ function speakQuestion(){
   const q=queue[idx];
   if(currentMode==='def') speak(q.def,0.85);
   else if(currentMode==='blank') speak(q.sent.replace('___',', ... ,'),0.85); // 빈칸은 살짝 멈춤
+  else if(currentMode==='spell') speak('How do you spell, '+q.w+'?',0.85);
   else if(currentMode==='mean') speak(q.w,0.8);
   else speak(q.w,0.8); // pic: 정답 전엔 버튼 숨김
 }
@@ -552,6 +554,7 @@ function renderQuestion(){
   document.getElementById('stars').textContent='⭐ '+score;
 
   speakBtn.style.display='inline-flex';
+  document.getElementById('options').style.display='';
   if(currentMode==='def'){
     tag.textContent='🔍 어떤 단어일까요?';
     body.innerHTML='<div class="qtext">'+q.def+'<span class="qhint">힌트: '+q.ko+'</span></div>';
@@ -567,6 +570,12 @@ function renderQuestion(){
     body.innerHTML='<div class="qword">'+q.w+'</div>';
     speakBtn.textContent='🔊 발음 듣기';
     buildOptions(q.w,'mean');
+  }else if(currentMode==='spell'){
+    tag.textContent='🔤 스펠링을 써 보세요!';
+    body.innerHTML='<div class="qbig">'+q.em+'</div><div class="qtext" style="margin-top:6px">How do you spell <b>'+esc(q.w)+'</b>?<span class="qhint">뜻: '+esc(q.ko)+'</span></div>';
+    speakBtn.textContent='🔊 문제 듣기';
+    buildSpell();
+    setTimeout(()=>speakQuestion(),300);
   }else{ // pic
     tag.textContent='🖼️ 무엇일까요?';
     body.innerHTML='<div class="qbig">'+q.em+'</div>';
@@ -585,6 +594,49 @@ function buildOptions(answerWord, kind){
     b.onclick=()=>choose(b,item.w===answerWord,kind);
     opts.appendChild(b);
   });
+}
+
+/* ---------- 🔤 스펠링 맞히기 ("How do you spell ...?") ---------- */
+function normSpell(t){ return String(t||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function buildSpell(){
+  const q=queue[idx], opts=document.getElementById('options');
+  opts.style.display='block';
+  const hint=q.w.split('').map(c=>/[A-Za-z0-9]/.test(c)?'＿':(c===' '?'　':c)).join(' ');
+  opts.innerHTML='<div id="spHint" style="text-align:center;font-size:22px;letter-spacing:2px;color:#8a97a8;margin:0 0 10px;word-break:break-all">'+hint+'</div>'
+    +'<input id="spInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="여기에 영어 철자를 써요" '
+    +'style="width:100%;box-sizing:border-box;font-family:inherit;font-size:24px;font-weight:700;text-align:center;padding:14px 10px;border:3px solid #d9e6f2;border-radius:20px;outline:none" onkeydown="if(event.key===\'Enter\')checkSpell()">'
+    +'<button class="next" id="spCheck" style="display:block" onclick="checkSpell()">확인 ✅</button>';
+  setTimeout(()=>{ const i=document.getElementById('spInput'); if(i) i.focus(); },100);
+}
+function checkSpell(){
+  if(locked) return;
+  const inp=document.getElementById('spInput'); if(!inp) return;
+  const val=inp.value; if(!normSpell(val)){ inp.focus(); return; }
+  locked=true;
+  const ans=queue[idx], ok=normSpell(val)===normSpell(ans.w);
+  const fb=document.getElementById('feedback');
+  inp.disabled=true; document.getElementById('spCheck').style.display='none';
+  if(ok){
+    score++; document.getElementById('stars').textContent='⭐ '+score;
+    inp.style.borderColor='var(--mint)'; inp.style.background='#dcffe9';
+    fb.textContent=pick(['스펠링 완벽! 🎉','정답이에요! 🌟','우와 잘했어요! 👏','똑똑해요! 💡']);
+    fb.className='feedback good'; beep('good'); confetti();
+  }else{
+    if(!wrongWords.find(x=>x.w===ans.w)) wrongWords.push(ans);
+    inp.style.borderColor='#ff8a8a'; inp.style.background='#ffe1e1';
+    fb.textContent='괜찮아요! 정답은 "'+ans.w+'" 예요 💪';
+    fb.className='feedback bad'; beep('bad');
+  }
+  setTimeout(()=>speak(ans.w,0.8),350);
+  document.getElementById('replay').style.display='flex';
+  if(ans.sent){
+    const en = ans.sent.includes('___') ? esc(ans.sent).replace('___','<u>'+esc(ans.w)+'</u>') : esc(ans.sent);
+    const sb=document.getElementById('sentbox');
+    sb.innerHTML='<div class="sen">'+en+'</div>' + (ans.sk? '<div class="sko">🇰🇷 '+esc(ans.sk)+'</div>' : '');
+    sb.classList.add('show');
+  }
+  const nx=document.getElementById('next'); nx.style.display='block';
+  nx.textContent=(idx===queue.length-1)?'결과 보기 🏆':'다음 →';
 }
 
 /* ---------- 채점 ---------- */
