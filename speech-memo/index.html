@@ -41,6 +41,14 @@ h1{font-size:19px;margin:6px 0 2px}
 .msg{margin:10px 0;font-weight:600}
 .big{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:15px}
 .big input{width:20px;height:20px}
+.tr{display:flex;gap:10px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.trn{color:var(--mute);font-size:13px;min-width:1.2em;padding-top:3px}
+.trb{flex:1;min-width:0}
+.tr .en{display:block;font-size:17px;line-height:1.6;text-align:left}
+.tr .ko{display:block;font-size:15px;line-height:1.6;color:var(--ok);margin-top:4px;text-align:left}
+.tg{font-family:inherit;border:0;background:none;padding:0;cursor:pointer;width:100%}
+.tr .en.tg{color:var(--ink)}
+.tg.hid{color:transparent!important;background:var(--priSoft);border-radius:6px}
 .note{color:var(--mute);font-size:12.5px;margin-top:6px}
 </style>
 </head>
@@ -63,8 +71,17 @@ var TEXT=[
 "Thank you for coming to listen to my speech. I hope you have a great day!"
 ];
 var S=TEXT.map(function(p){return p.match(/[^.!?]+[.!?]+/g).map(function(s){return s.trim()})});
-var MODES=[["listen","① 듣기"],["cloze","② 빈칸"],["first","③ 첫글자"],["recall","④ 말하기"],["order","⑤ 순서"]];
-var st={p:0,mode:"listen",level:0.3,seed:1,rate:0.85,playing:false};
+var KO=[
+["여러분, 안녕하세요!","숫자와 그림이 생명을 구하는 데 도움이 될 수 있을까요?","저는 그렇다고 생각합니다!","제 이름은 노아이고, PSA 목동 Lion Class 소속입니다.","제가 존경하는 인물은 플로렌스 나이팅게일이고, 저는 그녀가 매우 심각한 문제를 해결하기 위해 두뇌를 사용한 방식을 존경합니다."],
+["플로렌스는 1820년 이탈리아에서 태어나 영국에서 자랐습니다.","그녀는 배우기를 좋아했고, 특히 수학을 좋아했습니다.","젊은 여성이 되었을 때, 그녀는 간호사가 되고 싶어 했습니다.","어떤 사람들은 그녀가 집에 있어야 한다고 생각했지만, 플로렌스는 자신의 목표를 따랐습니다.","그녀는 간호 기술을 배웠고 환자들을 돕기 시작했습니다."],
+["1854년, 플로렌스는 크림 전쟁 중 군인들을 돌보기 위해 떠났습니다.","그녀는 많은 군인이 부상 때문만이 아니라 질병 때문에도 죽어 가고 있다는 것을 보았습니다.","병원은 훨씬 더 깨끗해져야 했습니다.","플로렌스는 환경을 개선하는 데 도움을 주었지만, 지도자들도 그 문제를 이해하기를 원했습니다."],
+["그럼 그녀는 무엇을 했을까요?","그녀는 세고, 기록하고, 정보를 연구했습니다.","그러고 나서 군인들이 여러 원인으로 얼마나 죽어 가고 있는지 보여 주는 다채로운 도표를 만들었습니다.","그녀의 그림은 어려운 숫자를 이해하기 쉽게 만들었습니다.","그녀의 가장 큰 업적 중 하나는 이 증거를 이용해 병원의 치료 환경을 바꾸고 더 많은 생명을 지킨 것이었습니다.","그녀는 또한 더 나은 간호 교육을 만드는 데도 기여했습니다."],
+["저는 플로렌스가 탐정 같았다고 생각합니다.","그녀는 무엇이 잘못되었는지 그냥 추측하지 않았습니다.","그녀는 사실을 찾았고, 그것을 이용해 답을 찾았습니다.","그 교훈은 학교에서 저에게도 중요합니다.","수학 문제가 어려울 때, 저는 제 풀이를 점검할 수 있습니다.","실험이 잘못되면, 저는 그 이유를 찾아낼 수 있습니다.","플로렌스는 제가 호기심을 갖고, 좋은 질문을 하고, 배운 것을 다른 사람들을 돕는 데 쓰도록 영감을 줍니다."],
+["제 연설을 들으러 와 주셔서 감사합니다.","좋은 하루 보내세요!"]
+];
+S.forEach(function(a,i){if(!KO[i]||KO[i].length!==a.length)console.warn("해석 문장 수 불일치: 문단 "+(i+1))});
+var MODES=[["trans","① 해석"],["listen","② 듣기"],["cloze","③ 빈칸"],["first","④ 첫글자"],["recall","⑤ 말하기"],["order","⑥ 순서"]];
+var st={p:0,mode:"trans",level:0.3,seed:1,rate:0.85,playing:false,hideEn:false,hideKo:false};
 var done={};
 try{done=JSON.parse(localStorage.getItem("noah-done")||"{}")}catch(e){}
 function save(){try{localStorage.setItem("noah-done",JSON.stringify(done))}catch(e){}}
@@ -73,6 +90,7 @@ function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function shuffle(arr,seed){var r=rng(seed),a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
 function sents(){return st.p===-1?[].concat.apply([],S):S[st.p]}
+function kos(){return st.p===-1?[].concat.apply([],KO):KO[st.p]}
 function splitWord(w){var m=w.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/);return[m[1],m[2],m[3]]}
 
 function stopSpeech(){st.playing=false;try{speechSynthesis.cancel()}catch(e){}}
@@ -92,6 +110,19 @@ function footer(){
   return'<label class="big"><input type="checkbox" id="dn"'+(done[st.p]?' checked':'')+'> 이 문단 다 외웠어요</label>';
 }
 
+function viewTrans(){
+  var E=sents(),K=kos();
+  var h='<div class="tools"><span>가리기</span>'
+  +'<button class="chip'+(st.hideKo?' on':'')+'" data-h="ko">한글 가리기</button>'
+  +'<button class="chip'+(st.hideEn?' on':'')+'" data-h="en">영어 가리기</button>'
+  +'<button class="btn ghost" id="trplay">▶ 듣기</button><button class="btn ghost" id="stop">■ 멈춤</button></div>';
+  E.forEach(function(s,k){
+    h+='<div class="tr"><div class="trn">'+(k+1)+'</div><div class="trb">'
+    +(st.hideEn?'<button class="tg hid en" data-tg="1">'+esc(s)+'</button>':'<span class="sent en" data-k="'+k+'">'+esc(s)+'</span>')
+    +'<button class="tg ko'+(st.hideKo?' hid':'')+'" data-tg="1">'+esc(K[k]||"")+'</button></div></div>';
+  });
+  return h+'<div class="note">영어 문장을 누르면 발음이 나와요. 가린 문장은 눌러서 확인하며 뜻을 떠올려 보세요.</div>';
+}
 function viewListen(){
   var i=0,h='<div class="tools"><button class="btn" id="playall">▶ 처음부터 듣기</button><button class="btn ghost" id="stop">■ 멈춤</button><span>속도</span>'
   +'<button class="chip'+(st.rate===0.7?' on':'')+'" data-r="0.7">느리게</button><button class="chip'+(st.rate===0.85?' on':'')+'" data-r="0.85">보통</button><button class="chip'+(st.rate===1?' on':'')+'" data-r="1">빠르게</button></div><div class="card">';
@@ -142,7 +173,8 @@ function viewOrder(){
 function render(){
   header();
   var v=$("view"),h='';
-  if(st.mode==="listen")h=viewListen();
+  if(st.mode==="trans")h=viewTrans();
+  else if(st.mode==="listen")h=viewListen();
   else if(st.mode==="cloze")h=viewCloze();
   else if(st.mode==="first")h=viewFirst();
   else if(st.mode==="recall")h=viewRecall();
@@ -156,6 +188,8 @@ document.addEventListener("click",function(e){
   if(d.p!==undefined){stopSpeech();st.p=+d.p;ord=null;render();return}
   if(d.m){stopSpeech();st.mode=d.m;render();return}
   if(d.r){st.rate=+d.r;render();return}
+  if(d.h){if(d.h==="ko")st.hideKo=!st.hideKo;else st.hideEn=!st.hideEn;render();return}
+  if(d.tg){t.classList.toggle("hid");return}
   if(d.l){st.level=+d.l;render();return}
   if(t.id==="reshuffle"||t.id==="reorder"){st.seed++;ord=null;render();return}
   if(t.id==="hideall"){document.querySelectorAll(".blank").forEach(function(b){b.classList.remove("show")});return}
@@ -167,7 +201,7 @@ document.addEventListener("click",function(e){
   if(d.o!==undefined){var i=+d.o;if(i===ord.next){ord.next++;ord.bad=-1}else{ord.bad=i}render();return}
   if(t.classList&&t.classList.contains("sent")){stopSpeech();speak(sents()[+d.k]);return}
   if(t.id==="stop"){stopSpeech();document.querySelectorAll(".sent").forEach(function(s){s.classList.remove("now")});return}
-  if(t.id==="playall"){
+  if(t.id==="playall"||t.id==="trplay"){
     stopSpeech();st.playing=true;var L=sents(),k=0;
     (function next(){
       document.querySelectorAll(".sent").forEach(function(s){s.classList.remove("now")});
